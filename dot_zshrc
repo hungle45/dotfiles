@@ -1,0 +1,190 @@
+# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# Initialization code that may require console input (password prompts, [y/n]
+# confirmations, etc.) must go above this block; everything else may go below.
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+# If you come from bash you might have to change your $PATH.
+# export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
+
+# Path to your Oh My Zsh installation.
+export ZSH="$HOME/.oh-my-zsh"
+# Private API keys live in ~/.zsh_secrets (unmanaged by chezmoi, never committed).
+[[ -f "$HOME/.zsh_secrets" ]] && source "$HOME/.zsh_secrets"
+export GOROOT="$HOME/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.2.darwin-arm64"
+export PATH="/Volumes/External/EApplications/GoLand.app/Contents/MacOS:$PATH"
+export PATH="$GOROOT/bin:$PATH"
+export PATH="$PATH:$(go env GOPATH)/bin"
+export GOPRIVATE=github.com/hungle45/*
+export NVM_DIR="$HOME/.nvm"
+    [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
+    [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
+export DISABLE_UPDATE_PROMPT=true
+
+export CLAUDE_MEM_ONLINE_OPTIN=false
+export OPENCODE_ENABLE_EXA=1
+
+export PI_NOTIFY_SOUND_CMD="afplay /System/Library/Sounds/Glass.aiff"
+
+bindkey -v
+bindkey -M viins 'jk' vi-cmd-mode
+
+plugins=(
+  git
+  zsh-autosuggestions
+  zsh-syntax-highlighting
+  history-substring-search
+  sudo
+)
+
+source $ZSH/oh-my-zsh.sh
+
+# zsh-you-should-use (MichaelAquilina) — installed via Homebrew (see Brewfile).
+# Loaded explicitly instead of via plugins=(...) so the shell still starts if
+# the package is missing; brew --prefix resolves /opt/homebrew (Apple Silicon)
+# or /usr/local (Intel) automatically.
+if (( $+commands[brew] )) && [[ -f "$(brew --prefix)/share/zsh-you-should-use/you-should-use.plugin.zsh" ]]; then
+  source "$(brew --prefix)/share/zsh-you-should-use/you-should-use.plugin.zsh"
+fi
+
+alias zshconfig="nv ~/.zshrc"
+alias zshreload="source ~/.zshrc"
+alias mtl="/bin/launchctl setenv MTL_HUD_ENABLED"
+alias nv='nvim'
+alias vimconfig="cd ~/.config/nvim && nv"
+alias ccconfig="cd ~/.claude/ && nv"
+alias ccgo="claude --dangerously-skip-permissions"
+alias opconfig="cd ~/.config/opencode && nv"
+alias piconfig="cd ~/.pi/agent && nv"
+alias tmuxconfig="nv ~/.tmux.conf"
+alias opgo="opencode"
+alias agentconfig="cd ~/.agents && nv"
+alias cpwd='pwd | pbcopy'
+alias cop='pbcopy'
+alias agentmemrelaod='launchctl bootout gui/$(id -u)/com.agentmemory.server && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.agentmemory.server.plist'
+alias learn='cd /Volumes/External/User/Workspace/opensource/amosblomqvist/learn && pi'
+
+# Added by Antigravity
+export PATH="/Users/my_mac/.antigravity/antigravity/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
+source $(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+
+export MINIKUBE_HOME="/Volumes/External/usr/.minikube"
+alias kubectl="minikube kubectl --"
+
+function git_list_and_checkout() {
+  local branch current
+  current=$(git branch --show-current)
+  branch=$(
+    {
+      git for-each-ref --format='local/%(refname:short)' refs/heads
+      git for-each-ref --format='remote/%(refname:short)' refs/remotes | grep -v 'HEAD'
+    } |
+    sort -u |
+    awk -v current="$current" '
+      {
+        name=$0
+        sub(/^local\//, "", name)
+        if (name == current) {
+          printf "\033[1;32m%s (current)\033[0m\n", $0
+        } else {
+          print $0
+        }
+      }
+    ' |
+    fzf --ansi \
+        --height 40% --layout=reverse --border \
+        --prompt=" Branch > " \
+        --preview 'b=$(echo {} | sed "s# (current)##; s#^local/##; s#^remote/[^/]*/##"); git log --oneline --graph --decorate --color=always "$b" | head -20'
+  )
+
+  # Clean selection — strip remote name as well
+  branch=$(echo "$branch" | sed 's# (current)##; s#^local/##; s#^remote/[^/]*/##')
+  [ -n "$branch" ] && git switch "$branch"
+}
+alias gco="git_list_and_checkout"
+
+function git_browse() {
+    git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
+        echo "Not inside a Git repository."
+        return 1
+    }
+
+    local url host repo_path
+
+    url=$(git remote get-url origin)
+
+    if [[ "$url" =~ ^git@([^:]+):(.+)$ ]]; then
+        host="${match[1]}"
+        repo_path="${match[2]}"
+        url="https://${host}/${repo_path}"
+    fi
+
+    url="${url%.git}"
+
+    open "$url"
+}
+alias gb="git_browse"
+
+# Create a symlink in the current directory
+function mksym() {
+  if [[ -z "$1" || -z "$2" ]]; then
+    echo "Usage: mksym <target> <symlink-name>"
+    return 1
+  fi
+  ln -s "$1" "$(pwd)/$2" && echo "✓ Symlink '$2' → '$1' created in $(pwd)"
+}
+alias mksym="mksym"
+
+# Remove a symlink in the current directory using fzf
+function rmsym() {
+  local selected
+  selected=$(find . -maxdepth 1 -type l | sed 's|./||' | \
+    fzf --height 40% --layout=reverse --border \
+        --prompt=" Symlink > " \
+        --preview 'readlink {}')
+  if [[ -n "$selected" ]]; then
+    rm "$selected" && echo "✓ Symlink '$selected' removed"
+  else
+    echo "No symlink selected."
+  fi
+}
+alias rmsym="rmsym"
+
+# Shortcut to symlink an app by name only
+linkapp() {
+  local app_name="$1"
+  # This adds .app if you forget to type it
+  [[ "$app_name" != *.app ]] && app_name="$app_name.app"
+
+  sudo ln -s "/Volumes/External/Applications/$app_name" "/Applications/$app_name"
+  
+  echo "Successfully linked $app_name from External to Applications!"
+}
+# >>> prj wrapper (added by aio prj install) >>>
+function prj() {
+  local target
+  target=$(aio prj cd 2>/dev/tty) && [ -n "$target" ] && cd "$target"
+}
+# <<< prj wrapper <<<
+
+# opencode
+export PATH="$HOME/.opencode/bin:$PATH"
+source ~/powerlevel10k/powerlevel10k.zsh-theme
+
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+typeset -g POWERLEVEL9K_INSTANT_PROMPT=quiet
+
+
+
+# Added by Antigravity
+export PATH="/Volumes/External/Users/my_mac/.antigravity/antigravity/bin:$PATH"
+
+# bun completions
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"

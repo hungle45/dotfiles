@@ -1,0 +1,45 @@
+call plug#begin('~/.vim/plugged')
+
+Plug 'wojciechkepka/vim-github-dark'
+Plug 'machakann/vim-highlightedyank'
+Plug 'tpope/vim-commentary'
+Plug 'easymotion/vim-easymotion'
+Plug 'justinmk/vim-sneak'
+
+call plug#end()
+
+syntax enable
+set termguicolors
+colorscheme ghdark
+
+
+set scrolloff=5
+set incsearch
+
+map Q gq
+
+" --- General Settings ---
+set incsearch
+set hlsearch
+set clipboard=unnamed,unnamedplus
+set relativenumber
+set number
+
+" --- Leader Key ---
+let mapleader = " "
+
+" --- Insert Mode Bindings ---
+inoremap jk <Esc>
+
+" --- Normal Mode Bindings ---
+nnoremap <leader>d dd
+nnoremap <C-n> :nohlsearch<CR>
+nnoremap K i<CR><Esc>k$
+nnoremap <leader>sv :source ~/.ideavimrc<CR>
+
+" --- Sneak Settings ---
+let g:sneak#use_ic_sc = 1
+map f <Plug>Sneak_f
+map F <Plug>Sneak_F
+map t <Plug>Sneak_t
+map T <Plug>Sneak_T

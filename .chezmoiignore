@@ -1,0 +1,7 @@
+# Files in the dotfiles repo that chezmoi must NOT apply into $HOME.
+# These are repo-management files, not configuration targets.
+README.md
+Brewfile
+.gitignore
+.idea
+.DS_Store
